@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write  # for creating GitHub releases
+
+jobs:
+  release:
+    name: Build, publish, release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile TypeScript
+        run: npm run compile
+
+      - name: Verify tag matches package.json version
+        # Catches mistakes where someone tags v0.2.0 but forgot to bump
+        # package.json - both PyPI-style and marketplace-style refuse to
+        # republish a version, so we fail loudly here instead.
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG"
+            exit 1
+          fi
+
+      - name: Package VSIX
+        run: npx -y @vscode/vsce package --no-dependencies -o "vscode-mu-preview-${GITHUB_REF_NAME#v}.vsix"
+
+      # Marketplace publishes are skipped when the corresponding secret
+      # isn't configured. Lets the workflow ship a GitHub release even
+      # before the maintainer sets up marketplace tokens.
+
+      - name: Publish to VS Code Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        if: env.VSCE_PAT != ''
+        run: npx -y @vscode/vsce publish --no-dependencies --packagePath "vscode-mu-preview-${GITHUB_REF_NAME#v}.vsix"
+
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        if: env.OVSX_PAT != ''
+        run: npx -y ovsx publish "vscode-mu-preview-${GITHUB_REF_NAME#v}.vsix"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "vscode-mu-preview-${GITHUB_REF_NAME#v}.vsix" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
