@@ -12,6 +12,14 @@ updates:
       dev-dependencies:
         dependency-type: development
         update-types: [minor, patch]
+    ignore:
+      # @types/vscode must stay <= engines.vscode floor (^1.85.0).
+      # vsce rejects packages where the typings promise APIs newer than
+      # the declared minimum runtime. Allow patch bumps only.
+      - dependency-name: "@types/vscode"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
 
   - package-ecosystem: github-actions
     directory: /
