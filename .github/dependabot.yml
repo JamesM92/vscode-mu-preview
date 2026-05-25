@@ -3,12 +3,13 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
       day: monday
     open-pull-requests-limit: 5
     groups:
-      # Bundle dev-only updates into a single PR per week to keep noise
-      # low. Security advisories still open their own PRs.
+      # Bundle dev-only updates into a single PR per month to keep noise
+      # low. Security advisories still open their own PRs immediately,
+      # independent of this schedule.
       dev-dependencies:
         dependency-type: development
         update-types: [minor, patch]
@@ -24,6 +25,6 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
       day: monday
     open-pull-requests-limit: 3
