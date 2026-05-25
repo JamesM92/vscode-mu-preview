@@ -3,6 +3,10 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # Allow manual republish from the Actions tab. Useful for re-running
+  # the marketplace publish after adding a token, without having to
+  # bump a version just to retrigger.
+  workflow_dispatch:
 
 permissions:
   contents: write  # for creating GitHub releases
@@ -25,20 +29,30 @@ jobs:
       - name: Compile TypeScript
         run: npm run compile
 
-      - name: Verify tag matches package.json version
-        # Catches mistakes where someone tags v0.2.0 but forgot to bump
-        # package.json - both PyPI-style and marketplace-style refuse to
-        # republish a version, so we fail loudly here instead.
+      - name: Resolve version
+        id: ver
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          PKG=$(node -p "require('./package.json').version")
-          if [ "$TAG" != "$PKG" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG"
-            exit 1
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            PKG=$(node -p "require('./package.json').version")
+            # Tag-triggered: enforce tag-matches-package check. Catches
+            # mistakes where someone tags v0.2.0 but forgot to bump
+            # package.json; marketplaces refuse to republish a version,
+            # so we fail loudly here instead of mid-publish.
+            if [ "$VERSION" != "$PKG" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG"
+              exit 1
+            fi
+          else
+            # Manual dispatch: use whatever's in package.json. No tag
+            # comparison because there's no tag context.
+            VERSION=$(node -p "require('./package.json').version")
           fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION"   >> "$GITHUB_OUTPUT"
 
       - name: Package VSIX
-        run: npx -y @vscode/vsce package --no-dependencies -o "vscode-mu-preview-${GITHUB_REF_NAME#v}.vsix"
+        run: npx -y @vscode/vsce package --no-dependencies -o "vscode-mu-preview-${{ steps.ver.outputs.version }}.vsix"
 
       # Marketplace publishes are skipped when the corresponding secret
       # isn't configured. Lets the workflow ship a GitHub release even
@@ -48,19 +62,25 @@ jobs:
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         if: env.VSCE_PAT != ''
-        run: npx -y @vscode/vsce publish --no-dependencies --packagePath "vscode-mu-preview-${GITHUB_REF_NAME#v}.vsix"
+        run: npx -y @vscode/vsce publish --no-dependencies --packagePath "vscode-mu-preview-${{ steps.ver.outputs.version }}.vsix"
 
       - name: Publish to Open VSX
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         if: env.OVSX_PAT != ''
-        run: npx -y ovsx publish "vscode-mu-preview-${GITHUB_REF_NAME#v}.vsix"
+        run: npx -y ovsx publish "vscode-mu-preview-${{ steps.ver.outputs.version }}.vsix"
 
-      - name: Create GitHub release
+      - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            "vscode-mu-preview-${GITHUB_REF_NAME#v}.vsix" \
-            --title "$GITHUB_REF_NAME" \
-            --generate-notes
+          TAG="${{ steps.ver.outputs.tag }}"
+          VSIX="vscode-mu-preview-${{ steps.ver.outputs.version }}.vsix"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # Release exists (e.g. manual republish, or a previous run
+            # made the release before a downstream step failed).
+            # Upload/replace the .vsix asset without rewriting notes.
+            gh release upload "$TAG" "$VSIX" --clobber
+          else
+            gh release create "$TAG" "$VSIX" --title "$TAG" --generate-notes
+          fi
