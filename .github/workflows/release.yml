@@ -64,6 +64,19 @@ jobs:
         if: env.VSCE_PAT != ''
         run: npx -y @vscode/vsce publish --no-dependencies --packagePath "vscode-mu-preview-${{ steps.ver.outputs.version }}.vsix"
 
+      - name: Ensure Open VSX namespace exists
+        # Open VSX requires the publisher namespace to be pre-created
+        # before any publish, unlike VS Code Marketplace which creates
+        # it implicitly. This step is idempotent: it tries to create
+        # the namespace and treats "already exists" as success so we
+        # don't have to special-case the first vs subsequent releases.
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        if: env.OVSX_PAT != ''
+        run: |
+          PUBLISHER=$(node -p "require('./package.json').publisher")
+          npx -y ovsx create-namespace "$PUBLISHER" 2>&1 || true
+
       - name: Publish to Open VSX
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
