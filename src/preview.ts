@@ -507,16 +507,27 @@ export class MicronPreview implements vscode.Disposable {
 
     // Collect every named form field's current value. Text/password
     // inputs use the typed value; checkboxes and radios are only
-    // included when checked, and use their value attribute.
+    // included when checked, and use their value attribute. Multiple
+    // checked checkboxes sharing the same field name are joined with
+    // a comma, matching NomadNet's own Browser.py behavior.
     function collectFormValues() {
       const out = {};
       document.querySelectorAll('input.mu-field').forEach(el => {
         if (el.name) out[el.name] = el.value;
       });
       document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(el => {
-        if (el.name && el.checked) out[el.name] = el.value;
+        if (!el.name || !el.checked) return;
+        out[el.name] = el.name in out ? out[el.name] + ',' + el.value : el.value;
       });
       return out;
+    }
+
+    // Resolve a single named field's current value - routed through
+    // collectFormValues() so both the wildcard-submit path and bare
+    // field-name references share the same checked-state and
+    // comma-concatenation handling.
+    function fieldValue(name) {
+      return collectFormValues()[name];
     }
 
     // Parse the data-field-spec attribute into key=value extras.
@@ -524,6 +535,9 @@ export class MicronPreview implements vscode.Disposable {
     //   ""                          - submit, no extras
     //   "key=val"                   - one extra
     //   "k=v|k2=v2"                 - several extras
+    //   "url=abc|images"            - literal pair plus a bare field
+    //                                  name, meaning "whatever that
+    //                                  field currently holds"
     //
     // Values are decodeURIComponent'd so .mu pages can URL-encode
     // arbitrary content (e.g. with >, |, backticks) and round-trip it
@@ -533,7 +547,11 @@ export class MicronPreview implements vscode.Disposable {
       for (const part of fspec.split('|')) {
         if (!part || part === '*') continue;
         const eq = part.indexOf('=');
-        if (eq === -1) continue;
+        if (eq === -1) {
+          const value = fieldValue(part);
+          if (value !== undefined) extras[part] = value;
+          continue;
+        }
         const key = part.slice(0, eq);
         let value = part.slice(eq + 1);
         try { value = decodeURIComponent(value); } catch (_) { /* keep raw on failure */ }

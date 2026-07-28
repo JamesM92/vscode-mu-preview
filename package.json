@@ -2,7 +2,7 @@
   "name": "vscode-mu-preview",
   "displayName": "Micron (.mu) Preview",
   "description": "Side-by-side preview for NomadNet micron (.mu) pages. Executes shebang scripts and renders their stdout via Micron2HTML, with LXMF identity / fingerprint simulation and a bandwidth-budget readout.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "JamesM92",
   "license": "MIT",
   "icon": "resources/icon.png",
