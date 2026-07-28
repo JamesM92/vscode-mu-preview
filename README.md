@@ -69,6 +69,7 @@ Click the identity / fingerprint buttons to switch them. The address bar accepts
 | Setting | Default | What it does |
 |---|---|---|
 | `muPreview.python` | `""` | Path to a Python interpreter with `Micron2HTML` installed. Empty = use the extension's bundled `.venv`. |
+| `muPreview.useProjectVenv` | `true` | Before running a shebang `.mu` script, search upward from its folder for a `.venv`/`venv` and prepend its `bin`/`Scripts` to `PATH`, so the script's own project dependencies are importable. |
 | `muPreview.executeShebang` | `true` | Run executable `.mu` files (those starting with `#!`) and render their stdout. Disable to render the file contents as static micron source instead. |
 | `muPreview.executeTimeoutMs` | `15000` | Timeout for executing a `.mu` script before aborting. Cold renders of map-heavy pages can take several seconds the first time. |
 | `muPreview.slowRenderWarnMs` | `5000` | Show a warning when a render takes longer than this. Set to `0` to disable. |
@@ -94,6 +95,7 @@ The webview never executes scripts from the page itself — it only intercepts l
 - **No streaming.** Each navigation fully re-runs the script. Long-running scripts will block the preview until they finish or hit `executeTimeoutMs`.
 - **No real Reticulum link.** Identities and fingerprints are *simulated* via env vars — useful for development, but the actual Reticulum stack isn't running.
 - **Shebang execution requires the file be marked executable** (`chmod +x`). On Windows, scripts run via the registered handler for the file's `#!` interpreter, so you'll typically want `#!/usr/bin/env python3` and Python on `PATH`.
+- **Project-local dependencies:** if the `.mu` script lives in a project with its own `.venv`, the extension prepends that venv's `bin`/`Scripts` to `PATH` before spawning it (see `muPreview.useProjectVenv`), so `#!/usr/bin/env python3` resolves to the project's interpreter instead of the system one — this is separate from `muPreview.python`, which only controls the interpreter used for the Micron2HTML conversion step.
 
 ## Reporting issues
 
