@@ -519,11 +519,28 @@ export class MicronPreview implements vscode.Disposable {
       return out;
     }
 
+    // Resolve a single named field's current value - same lookup
+    // collectFormValues() uses, checked-state-aware for checkboxes/radios.
+    function fieldValue(name) {
+      const sel = '.mu-field[name="' + CSS.escape(name) + '"], ' +
+                  'input[type="checkbox"][name="' + CSS.escape(name) + '"], ' +
+                  'input[type="radio"][name="' + CSS.escape(name) + '"]';
+      const el = document.querySelector(sel);
+      if (!el) return undefined;
+      if (el.type === 'checkbox' || el.type === 'radio') {
+        return el.checked ? el.value : undefined;
+      }
+      return el.value;
+    }
+
     // Parse the data-field-spec attribute into key=value extras.
     // Format examples (after the leading '*' is stripped):
     //   ""                          - submit, no extras
     //   "key=val"                   - one extra
     //   "k=v|k2=v2"                 - several extras
+    //   "url=abc|images"            - literal pair plus a bare field
+    //                                  name, meaning "whatever that
+    //                                  field currently holds"
     //
     // Values are decodeURIComponent'd so .mu pages can URL-encode
     // arbitrary content (e.g. with >, |, backticks) and round-trip it
@@ -533,7 +550,11 @@ export class MicronPreview implements vscode.Disposable {
       for (const part of fspec.split('|')) {
         if (!part || part === '*') continue;
         const eq = part.indexOf('=');
-        if (eq === -1) continue;
+        if (eq === -1) {
+          const value = fieldValue(part);
+          if (value !== undefined) extras[part] = value;
+          continue;
+        }
         const key = part.slice(0, eq);
         let value = part.slice(eq + 1);
         try { value = decodeURIComponent(value); } catch (_) { /* keep raw on failure */ }
