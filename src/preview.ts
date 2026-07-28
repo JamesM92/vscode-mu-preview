@@ -507,30 +507,27 @@ export class MicronPreview implements vscode.Disposable {
 
     // Collect every named form field's current value. Text/password
     // inputs use the typed value; checkboxes and radios are only
-    // included when checked, and use their value attribute.
+    // included when checked, and use their value attribute. Multiple
+    // checked checkboxes sharing the same field name are joined with
+    // a comma, matching NomadNet's own Browser.py behavior.
     function collectFormValues() {
       const out = {};
       document.querySelectorAll('input.mu-field').forEach(el => {
         if (el.name) out[el.name] = el.value;
       });
       document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(el => {
-        if (el.name && el.checked) out[el.name] = el.value;
+        if (!el.name || !el.checked) return;
+        out[el.name] = el.name in out ? out[el.name] + ',' + el.value : el.value;
       });
       return out;
     }
 
-    // Resolve a single named field's current value - same lookup
-    // collectFormValues() uses, checked-state-aware for checkboxes/radios.
+    // Resolve a single named field's current value - routed through
+    // collectFormValues() so both the wildcard-submit path and bare
+    // field-name references share the same checked-state and
+    // comma-concatenation handling.
     function fieldValue(name) {
-      const sel = '.mu-field[name="' + CSS.escape(name) + '"], ' +
-                  'input[type="checkbox"][name="' + CSS.escape(name) + '"], ' +
-                  'input[type="radio"][name="' + CSS.escape(name) + '"]';
-      const el = document.querySelector(sel);
-      if (!el) return undefined;
-      if (el.type === 'checkbox' || el.type === 'radio') {
-        return el.checked ? el.value : undefined;
-      }
-      return el.value;
+      return collectFormValues()[name];
     }
 
     // Parse the data-field-spec attribute into key=value extras.
