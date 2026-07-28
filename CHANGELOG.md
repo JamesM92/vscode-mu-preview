@@ -4,6 +4,12 @@ All notable changes to the **Micron (.mu) Preview** extension are documented her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-07-28
+
+### Fixed
+- Link field-specs now resolve bare field-name references (e.g. `url=abc123|images`), not just literal `key=value` pairs. Previously only wildcard (`*`) submit links picked these up via `collectFormValues()`; ordinary content links silently dropped them, matching neither NomadNet's Guide (which documents mixing both forms in one spec) nor its `Browser.py` implementation.
+- Multiple checked checkboxes sharing the same field name are now joined with a comma instead of the last one silently overwriting the rest, matching NomadNet's documented and implemented behavior for grouped multi-select checkboxes.
+
 ## [0.2.0] - 2026-07-28
 
 ### Added
