@@ -113,6 +113,11 @@
           "default": "",
           "description": "Path to a Python interpreter that has micron2html installed. If empty, uses the extension's bundled venv at <extension>/.venv/bin/python (or .venv\\Scripts\\python.exe on Windows)."
         },
+        "muPreview.useProjectVenv": {
+          "type": "boolean",
+          "default": true,
+          "description": "Before executing a shebang .mu script, search upward from its folder (bounded to the containing workspace folder) for a .venv or venv directory and prepend its bin (Scripts on Windows) to PATH, so '#!/usr/bin/env python3' resolves to that project's virtualenv and picks up its installed dependencies. Disable to leave PATH untouched."
+        },
         "muPreview.executeShebang": {
           "type": "boolean",
           "default": true,

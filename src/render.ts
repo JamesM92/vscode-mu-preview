@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from 'child_process';
+import { existsSync } from 'fs';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
@@ -82,6 +83,12 @@ function executeMu(
       env[`var_${k}`]   = v;
     }
   }
+  const venvBin = findProjectVenvBinDir(path.dirname(filePath));
+  if (venvBin) {
+    env.VIRTUAL_ENV = path.dirname(venvBin);
+    env.PATH = `${venvBin}${path.delimiter}${env.PATH ?? ''}`;
+    delete env.PYTHONHOME;
+  }
   return new Promise((resolve, reject) => {
     const child = spawn(filePath, [], {
       cwd: path.dirname(filePath),
@@ -157,6 +164,36 @@ function locateAssets(python: string): string {
   const dir = result.stdout.trim();
   assetsCache = { python, dir };
   return dir;
+}
+
+const VENV_DIR_NAMES = ['.venv', 'venv'];
+const VENV_SEARCH_DEPTH = 20;
+
+/** Walk upward from the .mu script's directory looking for a `.venv`/`venv`
+ *  the script's own project may have set up (e.g. `pip install`-ed deps the
+ *  script imports). Bounded to the containing workspace folder when one is
+ *  open, otherwise capped at VENV_SEARCH_DEPTH so an unbounded filesystem
+ *  root doesn't get walked. Returns the venv's bin/Scripts dir, or
+ *  undefined if none is found or the feature is disabled. */
+function findProjectVenvBinDir(startDir: string): string | undefined {
+  const cfg = vscode.workspace.getConfiguration('muPreview');
+  if (!cfg.get<boolean>('useProjectVenv', true)) return undefined;
+
+  const boundary = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(startDir))?.uri.fsPath;
+  const binSubdir = os.platform() === 'win32' ? 'Scripts' : 'bin';
+
+  let dir = startDir;
+  for (let i = 0; i < VENV_SEARCH_DEPTH; i++) {
+    for (const name of VENV_DIR_NAMES) {
+      const bin = path.join(dir, name, binSubdir);
+      if (existsSync(bin)) return bin;
+    }
+    if (boundary && dir === boundary) break;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return undefined;
 }
 
 function resolvePython(context: vscode.ExtensionContext): string {
