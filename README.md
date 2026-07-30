@@ -19,12 +19,12 @@ Side-by-side preview for [NomadNet](https://github.com/markqvist/NomadNet) **mic
 
 This extension shells out to the [Micron2HTML](https://github.com/JamesM92/Micron2HTML) Python package for the actual micron-to-HTML conversion.
 
-You need **Python 3.9+** and `Micron2HTML` available on the interpreter the extension uses. You have two options:
+You need **Python 3.9+** and `Micron2HTML` **1.1.0 or newer** available on the interpreter the extension uses (1.1.0 fixes a tag-nesting bug where a background/foreground reset next to another color or style token could leave a color applied further than the source specifies). You have two options:
 
 ### Option 1 — Use a system / project Python
 
 ```bash
-pip install Micron2HTML
+pip install "Micron2HTML>=1.1.0"
 ```
 
 Then point the extension at that interpreter via the `muPreview.python` setting (full path to `python` / `python.exe`). If left empty, the extension falls back to a bundled venv at `<extension>/.venv/`.
@@ -36,7 +36,13 @@ Create a `.venv` inside the extension folder:
 ```bash
 cd ~/.vscode/extensions/jamesm92.vscode-mu-preview-<version>
 python3 -m venv .venv
-.venv/bin/pip install Micron2HTML
+.venv/bin/pip install "Micron2HTML>=1.1.0"
+```
+
+Already have a bundled venv from before? Upgrade it in place:
+
+```bash
+.venv/bin/pip install --upgrade "Micron2HTML>=1.1.0"
 ```
 
 (Substitute `Scripts\python.exe` on Windows.)
