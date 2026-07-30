@@ -4,6 +4,11 @@ All notable changes to the **Micron (.mu) Preview** extension are documented her
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-07-28
+
+### Fixed
+- Documented a minimum required `Micron2HTML` version of 1.1.0. That release fixes a tag-nesting bug where `` `b ``/`` `f ``/`` `! ``/`` `_ ``/`` `* `` reset/toggle tokens closed a non-innermost open span in the wrong stream position, leaving a background or foreground color applied further into a line than the source specifies whenever another color/style token was still open. vscode-mu-preview doesn't pin or bundle a `Micron2HTML` version, so this is a documentation-only change here — see the [README](README.md#requirements) for upgrade instructions.
+
 ## [0.2.1] - 2026-07-28
 
 ### Fixed
